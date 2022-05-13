@@ -80,6 +80,8 @@ namespace PatchingServer
         private object refreshLock = new object();
         readonly object logObj = new object();
 
+        private ManualResetEvent loadingCompleteEvent = new ManualResetEvent(false);
+
         public Program(DirectoryInfo dir, FileInfo configFile)
         {
             IsInited = false;
@@ -90,6 +92,7 @@ namespace PatchingServer
 
         void Init()
         {
+            loadingCompleteEvent.Reset();
             IsInited = false;
 
             string patcherUrl;
@@ -185,7 +188,6 @@ namespace PatchingServer
 
                     ResponseContent = ResponseRootObject.ToString();
 
-                    IsInited = true;
                     ScheduleRefresh();
 
                     if (refreshThread != null)
@@ -195,6 +197,10 @@ namespace PatchingServer
 
                     AppendLog($"{numFiles} files fetched");
                     AppendLog($"{FileDictObject.Count} files indexed");
+
+                    IsInited = true;
+                    loadingCompleteEvent.Set();
+
                     break;
                 }
                 catch (FileNotFoundException)
@@ -211,6 +217,7 @@ namespace PatchingServer
                 return;
             }
 
+            loadingCompleteEvent.Reset();
             IsInited = false;
             AppendLog("Reload");
 
@@ -587,34 +594,39 @@ namespace PatchingServer
 
                 AppendLog($"[Request] {(xForwardFor == null ? string.Empty : xForwardFor + ", ")}{context.Request.RemoteEndpoint} ({context.Request.Method}) {context.Request.RequestUri}");
 
-                switch (request.RequestUri.AbsolutePath)
+                try
                 {
-                    case "/":
-                        try
-                        {
+                    switch (request.RequestUri.AbsolutePath)
+                    {
+                        case "/":
+                            if (!loadingCompleteEvent.WaitOne(0))
+                            {
+                                response.StatusCode = 503;
+                                response.ReasonPhrase = "Service Unavailable";
+                                break;
+                            }
                             response.WriteContent(ResponseContent);
-                        }
-                        catch (Exception ex)
-                        {
-                            AppendError(ex.ToString());
-                            response.InternalServerError();
-                        }
-                        finally
-                        {
-                            response.Close();
-                        }
-                        break;
-                    case "/reload":
-                        Reload();
-                        response.StatusCode = 200;
-                        response.ReasonPhrase = "OK";
-                        response.Close();
-                        break;
-                    default:
-                        response.NotFound();
-                        response.Close();
-                        break;
+                            break;
+                        case "/reload":
+                            Reload();
+                            response.StatusCode = 200;
+                            response.ReasonPhrase = "OK";
+                            break;
+                        default:
+                            response.NotFound();
+                            break;
+                    }
                 }
+                catch (Exception ex)
+                {
+                    AppendError(ex.ToString());
+                    response.InternalServerError();
+                }
+                finally
+                {
+                    response.Close();
+                }
+                
             }
             catch (Exception ex)
             {
