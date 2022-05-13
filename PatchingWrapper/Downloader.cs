@@ -148,11 +148,7 @@ namespace PatchingWrapper
                         }
                     }
                 }
-                catch (HttpRequestException)
-                {
-
-                }
-                catch (IOException)
+                catch (Exception ex)
                 {
 
                 }

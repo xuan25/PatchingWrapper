@@ -152,10 +152,6 @@ namespace PatcherUpdater
                 {
 
                 }
-                catch (IOException)
-                {
-
-                }
             } while (Length < 0 || Position != Length);
             OutputFileStream.Close();
         }

@@ -88,9 +88,20 @@ namespace PatchingWrapper
                     metaJson = Json.Parser.Parse(responseStream);
                 }
             }
-            catch (HttpRequestException ex)
+            catch (Exception ex)
             {
-                MessageBox.Show($"Unable to connect to the remote server: \n\n{ex.Message}", "Network Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Text.StringBuilder messageBuilder = new System.Text.StringBuilder();
+                Exception currEx = ex;
+                int idx = 0;
+                while(currEx != null)
+                {
+                    messageBuilder.Append(new string(' ', idx * 4));
+                    messageBuilder.AppendLine(currEx.Message);
+                    currEx = currEx.InnerException;
+                    idx++;
+                }
+                
+                MessageBox.Show($"Unable to connect to the remote server: \n\n{messageBuilder}", "Network Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Environment.Exit(0);
                 return;
             }
