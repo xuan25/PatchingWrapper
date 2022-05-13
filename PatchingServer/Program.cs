@@ -61,8 +61,7 @@ namespace PatchingServer
 
 
         public DirectoryInfo? Dir { get; private set; }
-        public string PatcherUrl { get; private set; }
-        public string ContentEndPoint { get; private set; }
+        public FileInfo ConfigFile { get; private set; }
 
         public bool IsInited { get; private set; }
 
@@ -86,33 +85,39 @@ namespace PatchingServer
             IsInited = false;
             Dir = dir;
 
-            using (FileStream configStream = configFile.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
-            {
-                Json.Value config = Json.Parser.Parse(configStream);
-                PatcherUrl = config["patcher_url"];
-                ContentEndPoint = config["content_end_point"];
-            }
+            ConfigFile = configFile;
         }
 
         void Init()
         {
             IsInited = false;
+
+            string patcherUrl;
+            string contentEndPoint;
+
+            using (FileStream configStream = ConfigFile.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                Json.Value config = Json.Parser.Parse(configStream);
+                patcherUrl = config["patcher_url"];
+                contentEndPoint = config["content_end_point"];
+            }
+
+            // patcher
+            HttpClient httpClient = new HttpClient();
+            HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Get, patcherUrl);
+            HttpResponseMessage httpResponse = httpClient.Send(httpRequest);
+            string patcherHash;
+            using (Stream responseStream = httpResponse.Content.ReadAsStream())
+            {
+                HashAlgorithm hashAlgorithm = MD5.Create();
+                byte[] hashByte = hashAlgorithm.ComputeHash(responseStream);
+                patcherHash = BitConverter.ToString(hashByte).Replace("-", "");
+            }
+
             while (true)
             {
                 try
                 {
-                    // patcher
-                    HttpClient httpClient = new HttpClient();
-                    HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Get, PatcherUrl);
-                    HttpResponseMessage httpResponse = httpClient.Send(httpRequest);
-                    string patcherHash;
-                    using (Stream responseStream = httpResponse.Content.ReadAsStream())
-                    {
-                        HashAlgorithm hashAlgorithm = MD5.Create();
-                        byte[] hashByte = hashAlgorithm.ComputeHash(responseStream);
-                        patcherHash = BitConverter.ToString(hashByte).Replace("-", "");
-                    }
-
                     // content watcher
 
                     refreshRunning = 0;
@@ -169,12 +174,12 @@ namespace PatchingServer
                         { "patcher",
                             new Json.Value.Object()
                             {
-                                { "url", PatcherUrl },
+                                { "url", patcherUrl },
                                 { "hash", patcherHash },
                                 { "alg", "md5" },
                             }
                         },
-                        { "content_end_point", ContentEndPoint },
+                        { "content_end_point", contentEndPoint },
                         { "files", FileDictObject }
                     };
 
@@ -209,7 +214,10 @@ namespace PatchingServer
             IsInited = false;
             AppendLog("Reload");
 
-            refreshThread.Join();
+            if (refreshThread != null)
+            {
+                refreshThread.Join();
+            }
 
             fileWatcher.EnableRaisingEvents = false;
             dirWatcher.EnableRaisingEvents = false;
@@ -569,27 +577,43 @@ namespace PatchingServer
                 HttpListenerRequest request = context.Request;
                 HttpListenerResponse response = context.Response;
 
-                try
-                {
-                    string[] segments = request.RequestUri.Segments;
+                string[] segments = request.RequestUri.Segments;
 
-                    string xForwardFor = null;
-                    if (request.Headers.ContainsKey("X-Forwarded-For"))
-                    {
-                        xForwardFor = request.Headers["X-Forwarded-For"];
-                    }
+                string xForwardFor = null;
+                if (request.Headers.ContainsKey("X-Forwarded-For"))
+                {
+                    xForwardFor = request.Headers["X-Forwarded-For"];
+                }
 
-                    AppendLog($"[Request] {(xForwardFor == null ? string.Empty : xForwardFor + ", ")}{context.Request.RemoteEndpoint} ({context.Request.Method}) {context.Request.RequestUri}");
-                    response.WriteContent(ResponseContent);
-                }
-                catch (Exception ex)
+                AppendLog($"[Request] {(xForwardFor == null ? string.Empty : xForwardFor + ", ")}{context.Request.RemoteEndpoint} ({context.Request.Method}) {context.Request.RequestUri}");
+
+                switch (request.RequestUri.AbsolutePath)
                 {
-                    AppendError(ex.ToString());
-                    response.InternalServerError();
-                }
-                finally
-                {
-                    response.Close();
+                    case "/":
+                        try
+                        {
+                            response.WriteContent(ResponseContent);
+                        }
+                        catch (Exception ex)
+                        {
+                            AppendError(ex.ToString());
+                            response.InternalServerError();
+                        }
+                        finally
+                        {
+                            response.Close();
+                        }
+                        break;
+                    case "/reload":
+                        Reload();
+                        response.StatusCode = 200;
+                        response.ReasonPhrase = "OK";
+                        response.Close();
+                        break;
+                    default:
+                        response.NotFound();
+                        response.Close();
+                        break;
                 }
             }
             catch (Exception ex)
