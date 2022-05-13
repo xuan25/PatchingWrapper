@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -109,38 +111,44 @@ namespace PatchingWrapper
 
         private void Download(string filepath, string downloadUrl)
         {
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            HttpClient httpClient = new HttpClient();
+
             OutputFileStream = new FileStream(filepath, FileMode.Append);
             Position = OutputFileStream.Position;
+
             do
             {
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(downloadUrl);
-                request.Method = "GET";
+                HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
+
                 // resume from interrupt
                 if (Length > 0)
-                    request.AddRange(Position);
+                {
+                    httpRequest.Headers.Range = new RangeHeaderValue(Position, null);
+                }
+
                 try
                 {
-                    using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                    HttpResponseMessage httpResponse = httpClient.SendAsync(httpRequest).Result;
+                    long contentLength = (long)httpResponse.Content.Headers.ContentLength;
+                    if (Length < 0)
                     {
-                        if (Length < 0)
-                            Length = response.ContentLength;
-                        using (Stream dataStream = response.GetResponseStream())
+                        Length = contentLength;
+                    }
+                    using (Stream responseStream = httpResponse.Content.ReadAsStreamAsync().Result)
+                    {
+                        long copied = 0;
+                        byte[] buffer = new byte[1024 * 1024 * 10];
+                        while (copied != contentLength)
                         {
-                            long copied = 0;
-                            byte[] buffer = new byte[1024 * 1024 * 10];
-                            while (copied != response.ContentLength)
-                            {
-                                int size = dataStream.Read(buffer, 0, (int)buffer.Length);
-                                OutputFileStream.Write(buffer, 0, size);
-                                copied += size;
-                                Position += size;
-                                ProgressUpdated?.Invoke(this, size);
-                            }
+                            int size = responseStream.Read(buffer, 0, buffer.Length);
+                            OutputFileStream.Write(buffer, 0, size);
+                            copied += size;
+                            Position += size;
+                            ProgressUpdated?.Invoke(this, size);
                         }
                     }
                 }
-                catch (WebException)
+                catch (HttpRequestException)
                 {
 
                 }

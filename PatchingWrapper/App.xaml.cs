@@ -1,4 +1,4 @@
-﻿using JsonUtil;
+using JsonUtil;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text.RegularExpressions;
@@ -89,28 +90,30 @@ namespace PatchingWrapper
                 firstStartup = true;
             }
 
-            Json.Value jsonRes;
+            // request meta from remote
+            Json.Value metaJson;
             try
             {
-                HttpWebRequest metaReq = (HttpWebRequest)WebRequest.Create(IndexEndPoint);
-                HttpWebResponse metaRes = (HttpWebResponse)metaReq.GetResponse();
+                HttpClient httpClient = new HttpClient();
+                HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Get, IndexEndPoint);
+                HttpResponseMessage httpResponse = httpClient.SendAsync(httpRequest).Result;
 
-                using (Stream streamRes = metaRes.GetResponseStream())
+                using (Stream responseStream = httpResponse.Content.ReadAsStreamAsync().Result)
                 {
-                    jsonRes = Json.Parser.Parse(streamRes);
+                    metaJson = Json.Parser.Parse(responseStream);
                 }
             }
-            catch (WebException ex)
+            catch (HttpRequestException ex)
             {
                 MessageBox.Show($"Unable to connect to the remote server: \n\n{ex.Message}", "Network Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Environment.Exit(0);
                 return;
             }
 
-            string contentEndPoint = jsonRes["content_end_point"];
+            string contentEndPoint = metaJson["content_end_point"];
 
-            string patcherHash = jsonRes["patcher"]["hash"];
-            string patcherHashAlg = jsonRes["patcher"]["alg"];
+            string patcherHash = metaJson["patcher"]["hash"];
+            string patcherHashAlg = metaJson["patcher"]["alg"];
             string currPatcherHash = FileHashMD5(Process.GetCurrentProcess().MainModule.FileName);
 
             if (patcherHashAlg != "md5" || patcherHash != currPatcherHash)

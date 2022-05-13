@@ -1,4 +1,4 @@
-using JsonUtil;
+﻿using JsonUtil;
 using System.CommandLine;
 using System.Security.Cryptography;
 
@@ -102,18 +102,15 @@ namespace PatchingServer
                 try
                 {
                     // patcher
-
-                    System.Net.HttpWebRequest request = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(PatcherUrl);
-                    request.Method = "GET";
+                    HttpClient httpClient = new HttpClient();
+                    HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Get, PatcherUrl);
+                    HttpResponseMessage httpResponse = httpClient.Send(httpRequest);
                     string patcherHash;
-                    using (System.Net.HttpWebResponse response = (System.Net.HttpWebResponse)request.GetResponse())
+                    using (Stream responseStream = httpResponse.Content.ReadAsStream())
                     {
-                        using (Stream dataStream = response.GetResponseStream())
-                        {
-                            HashAlgorithm hashAlgorithm = MD5.Create();
-                            byte[] hashByte = hashAlgorithm.ComputeHash(dataStream);
-                            patcherHash = BitConverter.ToString(hashByte).Replace("-", "");
-                        }
+                        HashAlgorithm hashAlgorithm = MD5.Create();
+                        byte[] hashByte = hashAlgorithm.ComputeHash(responseStream);
+                        patcherHash = BitConverter.ToString(hashByte).Replace("-", "");
                     }
 
                     // content watcher
