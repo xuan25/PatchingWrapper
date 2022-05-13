@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:PatcherUpdater"
         mc:Ignorable="d"
-        Title="PatcherUpdater">
+        Title="PatcherUpdater" SizeToContent="WidthAndHeight">
     <Grid Margin="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="auto"/>
