@@ -1,4 +1,4 @@
-﻿using JsonUtil;
+using JsonUtil;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -106,7 +106,7 @@ namespace PatchingWrapper
                 return;
             }
 
-            string contentEndPoint = metaJson["content_end_point"];
+            string contentEndpoint = metaJson["content_endpoint"];
 
             string patcherHash = metaJson["patcher"]["hash"];
             string patcherHashAlg = metaJson["patcher"]["alg"];
@@ -255,7 +255,7 @@ namespace PatchingWrapper
             Console.WriteLine($"Update: {pendingDownloads.Count}");
 
             // do update
-            MainWindow = new MainWindow(contentEndPoint, pendingDownloads);
+            MainWindow = new MainWindow(contentEndpoint, pendingDownloads);
 
             // start main exec after download
             if (startupAfterDownload)

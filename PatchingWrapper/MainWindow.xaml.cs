@@ -21,7 +21,7 @@ namespace PatchingWrapper
     /// </summary>
     public partial class MainWindow : Window
     {
-        private string DownloadEndPoint;
+        private string ContentEndpoint;
         private Queue<PendingDownload> PendingDownloads;
 
         List<Thread> DownloadingThreads;
@@ -36,11 +36,11 @@ namespace PatchingWrapper
 
         private readonly double updateInterval = 0.1;
 
-        public MainWindow(string downloadEndPoint, IEnumerable<PendingDownload> pendingDownloads)
+        public MainWindow(string contentEndpoint, IEnumerable<PendingDownload> pendingDownloads)
         {
             InitializeComponent();
 
-            DownloadEndPoint = downloadEndPoint;
+            ContentEndpoint = contentEndpoint;
             PendingDownloads = new Queue<PendingDownload>(pendingDownloads);
             NumTotalItems = pendingDownloads.LongCount();
             NumRemainingItems = NumTotalItems;
@@ -124,7 +124,7 @@ namespace PatchingWrapper
                         pendingDownload = PendingDownloads.Dequeue();
                     }
 
-                    string url = $"{DownloadEndPoint}/{pendingDownload.Path}";
+                    string url = $"{ContentEndpoint}/{pendingDownload.Path}";
                     downloader = new Downloader(pendingDownload.Path, url);
                     downloader.ProgressUpdated += Downloader_ProgressUpdated;
                     downloader.Download();

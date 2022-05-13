@@ -96,13 +96,13 @@ namespace PatchingServer
             IsInited = false;
 
             string patcherUrl;
-            string contentEndPoint;
+            string contentEndpoint;
 
             using (FileStream configStream = ConfigFile.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 Json.Value config = Json.Parser.Parse(configStream);
                 patcherUrl = config["patcher_url"];
-                contentEndPoint = config["content_end_point"];
+                contentEndpoint = config["content_endpoint"];
             }
 
             // patcher
@@ -182,7 +182,7 @@ namespace PatchingServer
                                 { "alg", "md5" },
                             }
                         },
-                        { "content_end_point", contentEndPoint },
+                        { "content_endpoint", contentEndpoint },
                         { "files", FileDictObject }
                     };
 
