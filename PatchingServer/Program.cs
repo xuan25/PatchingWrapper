@@ -1,4 +1,4 @@
-﻿using JsonUtil;
+using JsonUtil;
 using System.CommandLine;
 using System.Security.Cryptography;
 
@@ -10,30 +10,30 @@ namespace PatchingServer
         {
             // Create a root command with some options
 
-            var dirOption = new Option<DirectoryInfo>(
-                    new string[] { "-d", "--dir" },
-                    description: "Directory contains content")
+            Option<DirectoryInfo> dirOption = new Option<DirectoryInfo>(
+                new string[] { "-d", "--dir" },
+                "Path to the content directory")
             {
                 IsRequired = true
             };
 
-            var configOption = new Option<FileInfo>(
-                    new string[] { "-c", "--config" },
-                    description: "Config")
+            Option<FileInfo> configOption = new Option<FileInfo>(
+                new string[] { "-c", "--config" },
+                "Path to the config file")
             {
                 IsRequired = true
             };
 
-            var portOption = new Option<int>(
-                    new string[] { "-p", "--port" },
-                    description: "The port which the server will be listening on")
+            Option<int> portOption = new Option<int>(
+                new string[] { "-p", "--port" },
+                "Listening port")
             {
                 IsRequired = true
             };
 
-            var logOption = new Option<FileInfo>(
-                    new string[] { "-l", "--log-file" },
-                    "The path to the log file")
+            Option<FileInfo> logOption = new Option<FileInfo>(
+                new string[] { "-l", "--log" },
+                "Path to the log file")
             {
                 IsRequired = true
             };
@@ -97,7 +97,7 @@ namespace PatchingServer
         void Init()
         {
             IsInited = false;
-            while(true)
+            while (true)
             {
                 try
                 {
@@ -169,7 +169,7 @@ namespace PatchingServer
 
                     ResponseRootObject = new Json.Value.Object()
                     {
-                        { "patcher", 
+                        { "patcher",
                             new Json.Value.Object()
                             {
                                 { "url", PatcherUrl },
@@ -186,7 +186,7 @@ namespace PatchingServer
                     IsInited = true;
                     ScheduleRefresh();
 
-                    if(refreshThread != null)
+                    if (refreshThread != null)
                     {
                         refreshThread.Join();
                     }
@@ -201,7 +201,7 @@ namespace PatchingServer
                 }
             }
         }
-        
+
         private void Reload()
         {
             if (IsInited == false)
@@ -241,15 +241,15 @@ namespace PatchingServer
                         { "hash", hash },
                         { "alg", "md5" },
                     };
-                    if(!FileDictObject.Contains(path))
+                    if (!FileDictObject.Contains(path))
                     {
                         FileDictObject.Add(path, fileObj);
-                    } 
+                    }
                     else
                     {
                         FileDictObject[path] = fileObj;
                     }
-                    
+
                 }
             });
             if (action == null) throw new Exception();
@@ -340,7 +340,7 @@ namespace PatchingServer
         private void FileWatcher_Error(object sender, ErrorEventArgs e)
         {
             AppendLog($"FileWatcherError: {e.GetException().Message}");
-            
+
             Reload();
         }
 
@@ -385,7 +385,7 @@ namespace PatchingServer
 
         private void DirWatcher_Deleted(object sender, FileSystemEventArgs e)
         {
-            Action action = new Action(() => 
+            Action action = new Action(() =>
             {
                 string path = Path.GetRelativePath(Dir.FullName, e.FullPath);
                 AppendLog($"Dir Deleted: {path}");
@@ -445,7 +445,7 @@ namespace PatchingServer
             lock (updateQueue)
             {
                 updateQueue.Enqueue(action);
-            } 
+            }
             ScheduleRefresh();
         }
 
@@ -464,7 +464,7 @@ namespace PatchingServer
             {
                 return;
             }
-            lock(refreshLock)
+            lock (refreshLock)
             {
                 if (refreshRunning == 1)
                 {
@@ -601,7 +601,7 @@ namespace PatchingServer
             }
         }
 
-        
+
 
         void Log(string text)
         {
