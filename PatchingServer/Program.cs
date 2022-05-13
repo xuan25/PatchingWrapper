@@ -17,9 +17,9 @@ namespace PatchingServer
                 IsRequired = true
             };
 
-            var patcherUrlOption = new Option<string>(
-                    new string[] { "-u", "--patcher-url" },
-                    description: "Patcher URL")
+            var configOption = new Option<FileInfo>(
+                    new string[] { "-c", "--config" },
+                    description: "Config")
             {
                 IsRequired = true
             };
@@ -41,19 +41,19 @@ namespace PatchingServer
             var rootCommand = new RootCommand
             {
                 dirOption,
-                patcherUrlOption,
+                configOption,
                 portOption,
                 logOption,
             };
 
             rootCommand.Description = "Patching Server";
 
-            rootCommand.SetHandler((DirectoryInfo dir, string patcherUrl, int port, FileInfo logFile) =>
+            rootCommand.SetHandler((DirectoryInfo dir, FileInfo configFile, int port, FileInfo logFile) =>
             {
-                Program mainProgram = new Program(dir, patcherUrl);
+                Program mainProgram = new Program(dir, configFile);
                 mainProgram.Init();
                 mainProgram.RunServer(port, logFile);
-            }, dirOption, patcherUrlOption, portOption, logOption);
+            }, dirOption, configOption, portOption, logOption);
 
             // Parse the incoming args and invoke the handler
             return rootCommand.Invoke(args);
@@ -62,6 +62,7 @@ namespace PatchingServer
 
         public DirectoryInfo? Dir { get; private set; }
         public string PatcherUrl { get; private set; }
+        public string ContentEndPoint { get; private set; }
 
         public bool IsInited { get; private set; }
 
@@ -80,11 +81,17 @@ namespace PatchingServer
         private object refreshLock = new object();
         readonly object logObj = new object();
 
-        public Program(DirectoryInfo dir, string patcherUrl)
+        public Program(DirectoryInfo dir, FileInfo configFile)
         {
             IsInited = false;
             Dir = dir;
-            PatcherUrl = patcherUrl;
+
+            using (FileStream configStream = configFile.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                Json.Value config = Json.Parser.Parse(configStream);
+                PatcherUrl = config["patcher_url"];
+                ContentEndPoint = config["content_end_point"];
+            }
         }
 
         void Init()
@@ -170,6 +177,7 @@ namespace PatchingServer
                                 { "alg", "md5" },
                             }
                         },
+                        { "content_end_point", ContentEndPoint },
                         { "files", FileDictObject }
                     };
 

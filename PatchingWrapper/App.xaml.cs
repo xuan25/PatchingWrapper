@@ -22,9 +22,7 @@ namespace PatchingWrapper
     /// </summary>
     public partial class App : Application
     {
-        public string PatcherVer = "202205111";
         public string IndexEndPoint = "http://127.0.0.1:7000/";
-        public string DownloadEndPoint = "http://127.0.0.1:5500/content";
 
         public string Exeutable = "AviUtl\\AviUtl中文版.exe";
 
@@ -108,6 +106,8 @@ namespace PatchingWrapper
                 Environment.Exit(0);
                 return;
             }
+
+            string contentEndPoint = jsonRes["content_end_point"];
 
             string patcherHash = jsonRes["patcher"]["hash"];
             string patcherHashAlg = jsonRes["patcher"]["alg"];
@@ -210,7 +210,7 @@ namespace PatchingWrapper
 
             Console.WriteLine($"Update: {pendingDownloads.Count}");
 
-            MainWindow = new MainWindow(DownloadEndPoint, pendingDownloads);
+            MainWindow = new MainWindow(contentEndPoint, pendingDownloads);
 
             if (firstStartup)
             {
