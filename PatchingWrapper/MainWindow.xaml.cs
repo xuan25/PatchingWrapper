@@ -34,6 +34,8 @@ namespace PatchingWrapper
         private long NumTotalItems = 0;
         private long NumRemainingItems = 0;
 
+        private readonly double updateInterval = 0.1;
+
         public MainWindow(string downloadEndPoint, IEnumerable<PendingDownload> pendingDownloads)
         {
             InitializeComponent();
@@ -88,14 +90,14 @@ namespace PatchingWrapper
         {
             while (true)
             {
-                long stepSize = (DownloadedSize - LastUpdateSize) / 10;
+                long dataRate = (long)((DownloadedSize - LastUpdateSize) * updateInterval);
                 Dispatcher.Invoke(() =>
                 {
-                    InfoBox.Text = $"[{NumTotalItems - NumRemainingItems} / {NumTotalItems}] {FormatBytes(DownloadedSize)} / {FormatBytes(TotalSize)} {FormatBytes(stepSize)}/s";
+                    InfoBox.Text = $"[{NumTotalItems - NumRemainingItems} / {NumTotalItems}] {FormatBytes(DownloadedSize)} / {FormatBytes(TotalSize)} {FormatBytes(dataRate)}/s";
                     PBar.Value = ((double)DownloadedSize / TotalSize) * 100;
                 });
                 LastUpdateSize = DownloadedSize;
-                Thread.Sleep(1000 / 10);
+                Thread.Sleep((int)(1000 * updateInterval));
             }
         }
 
@@ -150,7 +152,8 @@ namespace PatchingWrapper
             // Debug: speed limit
             if (System.Diagnostics.Debugger.IsAttached)
             {
-                while ((DownloadedSize - LastUpdateSize) / 10 > 0.5 * 1024 * 1024)
+                double speedThreshold = 0.5 * 1024 * 1024;
+                while (((DownloadedSize - LastUpdateSize) * updateInterval) > speedThreshold)
                 {
                     Thread.Sleep(10);
                 }
