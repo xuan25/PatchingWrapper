@@ -13,14 +13,42 @@ namespace PatcherUpdater
     /// </summary>
     public partial class App : Application
     {
+        private string ToCmdArgs(IEnumerable<object> args)
+        {
+            List<string> result = new List<string>();
+            foreach (object arg in args)
+            {
+                string argStr = arg.ToString();
+                if (!argStr.Contains(" "))
+                {
+                    result.Add($"{argStr}");
+                }
+                else
+                {
+                    result.Add($"\"{argStr.Replace("\"", "\"\"")}\"");
+                }
+            }
+            return string.Join(" ", result);
+        }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
 
-            string path = e.Args[0];
-            string url = e.Args[1];
+            List<string> args = new List<string>(e.Args);
 
-            MainWindow = new MainWindow(path, url);
+            string path = args[0];
+            args.RemoveAt(0);
+            string url = args[0];
+            args.RemoveAt(0);
+
+            string mainArgs = null;
+            if(args.Count > 0)
+            {
+                mainArgs = ToCmdArgs(args);
+            }
+
+            MainWindow = new MainWindow(path, url, mainArgs);
             MainWindow.Show();
         }
     }

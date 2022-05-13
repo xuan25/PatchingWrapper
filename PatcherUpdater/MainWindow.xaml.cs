@@ -26,6 +26,7 @@ namespace PatcherUpdater
         Downloader downloader;
         public string Path;
         public string Url;
+        public string MainArgs;
 
         Thread DownloadingThread;
         Thread MonitorThread;
@@ -35,12 +36,13 @@ namespace PatcherUpdater
         private long LastUpdateSize = 0;
         private long DownloadedSize = 0;
 
-        public MainWindow(string path, string url)
+        public MainWindow(string path, string url, string mainArgs)
         {
             InitializeComponent();
 
             Path = path;
             Url = url;
+            MainArgs = mainArgs;
 
             Loaded += MainWindow_Loaded;
             Closing += MainWindow_Closing;
@@ -70,7 +72,15 @@ namespace PatcherUpdater
             downloader.Download();
 
             // finished
-            Process.Start(Path);
+            if(MainArgs != null)
+            {
+                Process.Start(Path, MainArgs);
+            } 
+            else
+            {
+                Process.Start(Path);
+            }
+            
             Dispatcher.Invoke(() =>
             {
                 Close();

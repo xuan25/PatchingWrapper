@@ -1,4 +1,4 @@
-using JsonUtil;
+﻿using JsonUtil;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -11,6 +11,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -34,60 +35,44 @@ namespace PatchingWrapper
 
         public static string UpdaterPath { get; private set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PatcherUpdater.exe");
 
-        string FileHashMD5(string path)
-        {
-            var hash = MD5.Create();
-            var stream = new FileStream(path, FileMode.Open, FileAccess.Read);
-            byte[] hashByte = hash.ComputeHash(stream);
-            stream.Close();
-            return BitConverter.ToString(hashByte).Replace("-", "");
-        }
-
-        public void RunUpdater(string url)
-        {
-            try
-            {
-                // release updater
-                using (Stream stream = Application.GetResourceStream(new Uri("/Resources/PatcherUpdater.exe", UriKind.Relative)).Stream)
-                {
-                    using (FileStream fileStream = new FileStream(UpdaterPath, FileMode.OpenOrCreate, FileAccess.Write))
-                    {
-                        stream.CopyTo(fileStream);
-                    }
-                }
-                // start updater
-                Process.Start(UpdaterPath, $"\"{Process.GetCurrentProcess().MainModule.FileName}\", \"{url}\"");
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                if (IsAdmin())
-                {
-                    MessageBox.Show($"Unable to access directory: \n\n{ex.Message}", "Permission Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    Environment.Exit(0);
-                }
-
-                // restart with admin
-                ProcessStartInfo processStartInfo = new ProcessStartInfo(Process.GetCurrentProcess().MainModule.FileName)
-                {
-                    Verb = "runas"
-                };
-                Process.Start(processStartInfo);
-            }
-        }
-
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
 
-            bool firstStartup = false;
-            if (File.Exists(Exeutable))
+            List<string> args = new List<string>(e.Args);
+
+            // update cleanup
+            if (File.Exists(UpdaterPath))
             {
-                Process mainProcess = Process.Start(Exeutable, string.Join("", e.Args));
-                mainProcess.WaitForExit();
-            } 
-            else
+                while (IsFileInUse(UpdaterPath))
+                {
+                    Thread.Sleep(1000);
+                }
+                File.Delete(UpdaterPath);
+            }
+
+            // no startup flag
+            bool noStartup = false;
+            if (args.Count > 0 && args[0] == "noStartup")
             {
-                firstStartup = true;
+                args.RemoveAt(0);
+                noStartup = true;
+            }
+
+            // main exec startup and wait for exit
+            bool startupAfterDownload = false;
+            if (!noStartup)
+            {
+                if (File.Exists(Exeutable))
+                {
+                    Process mainProcess = Process.Start(Exeutable, string.Join("", e.Args));
+                    mainProcess.WaitForExit();
+                }
+                else
+                {
+                    startupAfterDownload = true;
+                }
+                noStartup = true;
             }
 
             // request meta from remote
@@ -116,17 +101,63 @@ namespace PatchingWrapper
             string patcherHashAlg = metaJson["patcher"]["alg"];
             string currPatcherHash = FileHashMD5(Process.GetCurrentProcess().MainModule.FileName);
 
+            // update patcher
             if (patcherHashAlg != "md5" || patcherHash != currPatcherHash)
             {
-                // Update patcher
-                string patcherUrl = jsonRes["patcher"]["url"];
-                RunUpdater(patcherUrl);
+                string patcherUrl = metaJson["patcher"]["url"];
+
+                try
+                {
+                    // release updater
+                    using (Stream stream = Application.GetResourceStream(new Uri("/Resources/PatcherUpdater.exe", UriKind.Relative)).Stream)
+                    {
+                        using (FileStream fileStream = new FileStream(UpdaterPath, FileMode.OpenOrCreate, FileAccess.Write))
+                        {
+                            stream.CopyTo(fileStream);
+                        }
+                    }
+
+                    // start updater
+                    List<string> updaterArgs = new List<string>();
+                    updaterArgs.Add($"\"{Process.GetCurrentProcess().MainModule.FileName}\"");
+                    updaterArgs.Add($"\"{patcherUrl}\"");
+                    if (noStartup)
+                    {
+                        updaterArgs.Add("noStartup");
+                    }
+                    updaterArgs.AddRange(args);
+                    Process.Start(UpdaterPath, ToCmdArgs(updaterArgs));
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    if (IsAdmin())
+                    {
+                        MessageBox.Show($"Unable to access directory: \n\n{ex.Message}", "Permission Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        Environment.Exit(0);
+                    }
+
+                    // restart with admin
+                    List<string> restartArgs = new List<string>();
+                    if (noStartup)
+                    {
+                        restartArgs.Add("noStartup");
+                    }
+                    restartArgs.AddRange(args);
+                    ProcessStartInfo processStartInfo = new ProcessStartInfo(Process.GetCurrentProcess().MainModule.FileName)
+                    {
+                        Verb = "runas",
+                        Arguments = ToCmdArgs(restartArgs)
+                    };
+                    Process.Start(processStartInfo);
+                }
+
                 Environment.Exit(0);
             }
 
+            // build update index
             List<PendingDownload> pendingDownloads = new List<PendingDownload>();
 
-            Json.Value.Object files = (Json.Value.Object)jsonRes["files"];
+            Json.Value.Object files = (Json.Value.Object)metaJson["files"];
             foreach (string path in files.Keys)
             {
                 Json.Value.Object file = (Json.Value.Object)files[path];
@@ -185,7 +216,7 @@ namespace PatchingWrapper
                 Environment.Exit(0);
             }
 
-            // Access
+            // validate access
             try
             {
                 using (FileStream fileStream = File.Create("temp", 1, FileOptions.DeleteOnClose))
@@ -210,12 +241,13 @@ namespace PatchingWrapper
                 Environment.Exit(0);
             }
             
-
             Console.WriteLine($"Update: {pendingDownloads.Count}");
 
+            // do update
             MainWindow = new MainWindow(contentEndPoint, pendingDownloads);
 
-            if (firstStartup)
+            // start main exec after download
+            if (startupAfterDownload)
             {
                 MainWindow.Closed += (object sender, EventArgs e1) =>
                 {
@@ -232,5 +264,54 @@ namespace PatchingWrapper
             WindowsPrincipal windowsPrincipal = new WindowsPrincipal(windowsIdentity);
             return windowsPrincipal.IsInRole(WindowsBuiltInRole.Administrator);
         }
+        
+        private string FileHashMD5(string path)
+        {
+            var hash = MD5.Create();
+            var stream = new FileStream(path, FileMode.Open, FileAccess.Read);
+            byte[] hashByte = hash.ComputeHash(stream);
+            stream.Close();
+            return BitConverter.ToString(hashByte).Replace("-", "");
+        }
+
+        private string ToCmdArgs(IEnumerable<object> args)
+        {
+            List<string> result = new List<string>();
+            foreach (object arg in args)
+            {
+                string argStr = arg.ToString();
+                if (!argStr.Contains(" "))
+                {
+                    result.Add($"{argStr}");
+                }
+                else
+                {
+                    result.Add($"\"{argStr.Replace("\"", "\"\"")}\"");
+                }
+            }
+            return string.Join(" ", result);
+        }
+
+        private bool IsFileInUse(string fileName)
+        {
+            bool inUse = true;
+            FileStream fileCheckingStream = null;
+            try
+            {
+                fileCheckingStream = new FileStream(fileName, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+                inUse = false;
+            }
+            catch
+            {
+
+            }
+            finally
+            {
+                if (fileCheckingStream != null)
+                    fileCheckingStream.Close();
+            }
+            return inUse;
+        }
+
     }
 }
