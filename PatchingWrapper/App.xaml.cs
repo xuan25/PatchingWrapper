@@ -109,12 +109,14 @@ namespace PatchingWrapper
                 return;
             }
 
-            string patcherVer = jsonRes["patcher"]["ver"];
-            string patcherUrl = jsonRes["patcher"]["url"];
+            string patcherHash = jsonRes["patcher"]["hash"];
+            string patcherHashAlg = jsonRes["patcher"]["alg"];
+            string currPatcherHash = FileHashMD5(Process.GetCurrentProcess().MainModule.FileName);
 
-            if (PatcherVer != patcherVer)
+            if (patcherHashAlg != "md5" || patcherHash != currPatcherHash)
             {
                 // Update patcher
+                string patcherUrl = jsonRes["patcher"]["url"];
                 RunUpdater(patcherUrl);
                 Environment.Exit(0);
             }

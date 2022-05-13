@@ -17,9 +17,9 @@ namespace PatchingServer
                 IsRequired = true
             };
 
-            var configOption = new Option<FileInfo>(
-                    new string[] { "-c", "--config" },
-                    description: "Config")
+            var patcherUrlOption = new Option<string>(
+                    new string[] { "-u", "--patcher-url" },
+                    description: "Patcher URL")
             {
                 IsRequired = true
             };
@@ -41,19 +41,19 @@ namespace PatchingServer
             var rootCommand = new RootCommand
             {
                 dirOption,
-                configOption,
+                patcherUrlOption,
                 portOption,
                 logOption,
             };
 
             rootCommand.Description = "Patching Server";
 
-            rootCommand.SetHandler((DirectoryInfo dir, FileInfo configFile, int port, FileInfo logFile) =>
+            rootCommand.SetHandler((DirectoryInfo dir, string patcherUrl, int port, FileInfo logFile) =>
             {
-                Program mainProgram = new Program(dir, configFile);
+                Program mainProgram = new Program(dir, patcherUrl);
                 mainProgram.Init();
                 mainProgram.RunServer(port, logFile);
-            }, dirOption, configOption, portOption, logOption);
+            }, dirOption, patcherUrlOption, portOption, logOption);
 
             // Parse the incoming args and invoke the handler
             return rootCommand.Invoke(args);
@@ -61,7 +61,7 @@ namespace PatchingServer
 
 
         public DirectoryInfo? Dir { get; private set; }
-        public Json.Value PatcherConfig { get; private set; }
+        public string PatcherUrl { get; private set; }
 
         public bool IsInited { get; private set; }
 
@@ -80,19 +80,12 @@ namespace PatchingServer
         private object refreshLock = new object();
         readonly object logObj = new object();
 
-        public Program(DirectoryInfo dir, FileInfo configFile)
+        public Program(DirectoryInfo dir, string patcherUrl)
         {
             IsInited = false;
             Dir = dir;
-
-            using (FileStream configStream = configFile.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
-            {
-                Json.Value config = Json.Parser.Parse(configStream);
-                PatcherConfig = config["patcher"];
-            }
-        }      
-
-
+            PatcherUrl = patcherUrl;
+        }
 
         void Init()
         {
@@ -101,7 +94,23 @@ namespace PatchingServer
             {
                 try
                 {
-                    // watcher
+                    // patcher
+
+                    System.Net.HttpWebRequest request = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(PatcherUrl);
+                    request.Method = "GET";
+                    string patcherHash;
+                    using (System.Net.HttpWebResponse response = (System.Net.HttpWebResponse)request.GetResponse())
+                    {
+                        using (Stream dataStream = response.GetResponseStream())
+                        {
+                            HashAlgorithm hashAlgorithm = MD5.Create();
+                            byte[] hashByte = hashAlgorithm.ComputeHash(dataStream);
+                            patcherHash = BitConverter.ToString(hashByte).Replace("-", "");
+                        }
+                    }
+
+                    // content watcher
+
                     refreshRunning = 0;
 
                     fileWatcher = new FileSystemWatcher(Dir.FullName);
@@ -128,7 +137,7 @@ namespace PatchingServer
 
                     AppendLog($"Watching {Dir.FullName}");
 
-                    // fetch
+                    // fetch content
 
                     long numFiles = 0;
 
@@ -153,7 +162,14 @@ namespace PatchingServer
 
                     ResponseRootObject = new Json.Value.Object()
                     {
-                        { "patcher", PatcherConfig },
+                        { "patcher", 
+                            new Json.Value.Object()
+                            {
+                                { "url", PatcherUrl },
+                                { "hash", patcherHash },
+                                { "alg", "md5" },
+                            }
+                        },
                         { "files", FileDictObject }
                     };
 

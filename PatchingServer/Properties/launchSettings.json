@@ -2,7 +2,7 @@
   "profiles": {
     "PatchingServer": {
       "commandName": "Project",
-      "commandLineArgs": "-d base/content/ -c config.json -p 7000 -l log.txt"
+      "commandLineArgs": "-d base/content/ -u http://127.0.0.1:5500/patcher/PatchingWrapper.exe -p 7000 -l log.txt"
     }
   }
 }
