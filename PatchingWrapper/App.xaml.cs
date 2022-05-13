@@ -67,12 +67,12 @@ namespace PatchingWrapper
                 {
                     Process mainProcess = Process.Start(Exeutable, string.Join("", e.Args));
                     mainProcess.WaitForExit();
+                    noStartup = true;
                 }
                 else
                 {
                     startupAfterDownload = true;
-                }
-                noStartup = true;
+                }               
             }
 
             // request meta from remote
