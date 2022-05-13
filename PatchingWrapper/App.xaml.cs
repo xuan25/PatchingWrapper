@@ -1,4 +1,4 @@
-using JsonUtil;
+﻿using JsonUtil;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -90,18 +90,22 @@ namespace PatchingWrapper
             }
             catch (Exception ex)
             {
-                System.Text.StringBuilder messageBuilder = new System.Text.StringBuilder();
-                Exception currEx = ex;
-                int idx = 0;
-                while(currEx != null)
+                if (startupAfterDownload)
                 {
-                    messageBuilder.Append(new string(' ', idx * 4));
-                    messageBuilder.AppendLine(currEx.Message);
-                    currEx = currEx.InnerException;
-                    idx++;
+                    System.Text.StringBuilder messageBuilder = new System.Text.StringBuilder();
+                    Exception currEx = ex;
+                    int idx = 0;
+                    while (currEx != null)
+                    {
+                        messageBuilder.Append(new string(' ', idx * 4));
+                        messageBuilder.AppendLine(currEx.Message);
+                        currEx = currEx.InnerException;
+                        idx++;
+                    }
+
+                    MessageBox.Show($"Unable to connect to the remote server: \n\n{messageBuilder}", "Network Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
                 
-                MessageBox.Show($"Unable to connect to the remote server: \n\n{messageBuilder}", "Network Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Environment.Exit(0);
                 return;
             }
