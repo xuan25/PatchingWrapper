@@ -37,6 +37,8 @@ namespace PatcherUpdater
         private long LastUpdateSize = 0;
         private long DownloadedSize = 0;
 
+        private readonly double updateInterval = 0.1;
+
         public MainWindow(string path, string url, string mainArgs)
         {
             InitializeComponent();
@@ -89,8 +91,21 @@ namespace PatcherUpdater
             });
         }
 
+        ManualResetEvent speedThresholdEvent = new ManualResetEvent(true);
+        double speedThreshold = 0.5 * 1024 * 1024;
+
         private void Downloader_ProgressUpdated(Downloader sender, long step)
         {
+            // Debug: speed limit
+            if (System.Diagnostics.Debugger.IsAttached)
+            {
+                if (((DownloadedSize - LastUpdateSize) * updateInterval) > speedThreshold)
+                {
+                    speedThresholdEvent.Reset();
+                    speedThresholdEvent.WaitOne();
+                }
+            }
+
             Interlocked.Exchange(ref TotalSize, sender.Length);
             Interlocked.Add(ref DownloadedSize, step);
             Status = sender.Status;
@@ -125,7 +140,9 @@ namespace PatcherUpdater
                     PBar.Value = ((double)DownloadedSize / TotalSize) * 100;
                 });
                 LastUpdateSize = DownloadedSize;
-                Thread.Sleep(1000 / 10);
+
+                speedThresholdEvent.Set();
+                Thread.Sleep((int)(1000 * updateInterval));
             }
         }
 

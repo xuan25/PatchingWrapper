@@ -103,6 +103,8 @@ namespace PatchingWrapper
                     PBar.Value = ((double)DownloadedSize / TotalSize) * 100;
                 });
                 LastUpdateSize = DownloadedSize;
+
+                speedThresholdEvent.Set();
                 Thread.Sleep((int)(1000 * updateInterval));
             }
         }
@@ -153,15 +155,18 @@ namespace PatchingWrapper
             }
         }
 
+        ManualResetEvent speedThresholdEvent = new ManualResetEvent(true);
+        double speedThreshold = 0.5 * 1024 * 1024;
+
         private void Downloader_ProgressUpdated(Downloader sender, long step)
         {
             // Debug: speed limit
             if (System.Diagnostics.Debugger.IsAttached)
             {
-                double speedThreshold = 0.5 * 1024 * 1024;
-                while (((DownloadedSize - LastUpdateSize) * updateInterval) > speedThreshold)
+                if (((DownloadedSize - LastUpdateSize) * updateInterval) > speedThreshold)
                 {
-                    Thread.Sleep(10);
+                    speedThresholdEvent.Reset();
+                    speedThresholdEvent.WaitOne();
                 }
             }
 

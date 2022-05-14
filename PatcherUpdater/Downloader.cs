@@ -137,7 +137,7 @@ namespace PatcherUpdater
                     using (Stream responseStream = httpResponse.Content.ReadAsStreamAsync().Result)
                     {
                         long copied = 0;
-                        byte[] buffer = new byte[1024 * 1024 * 10];
+                        byte[] buffer = new byte[1024];
                         while (copied != contentLength)
                         {
                             int size = responseStream.Read(buffer, 0, buffer.Length);
