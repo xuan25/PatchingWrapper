@@ -129,6 +129,11 @@ namespace PatchingWrapper
                 try
                 {
                     HttpResponseMessage httpResponse = Client.SendAsync(httpRequest).Result;
+                    if(httpResponse.StatusCode != HttpStatusCode.OK)
+                    {
+                        // TODO: handle error
+                        throw new Exception();
+                    }
                     long contentLength = (long)httpResponse.Content.Headers.ContentLength;
                     if (Length < 0)
                     {
