@@ -92,6 +92,7 @@ namespace PatchingServer
 
             string? patcherPath = null;
             string contentEndpoint;
+            string executable;
 
             using (FileStream configStream = ConfigFile.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
             {
@@ -103,7 +104,8 @@ namespace PatchingServer
                 PatcherUrl = config["patcher_url"];
                 if(config.Contains("patcher_path"))
                     patcherPath = config["patcher_path"];
-                
+
+                executable = config["executable"];
             }
 
             // patcher
@@ -201,7 +203,8 @@ namespace PatchingServer
                     {
                         { "patcher", PatcherObject },
                         { "content_endpoint", contentEndpoint },
-                        { "files", FileDictObject }
+                        { "files", FileDictObject },
+                        { "executable", executable }
                     };
 
                     ResponseContent = ResponseRootObject.ToString();

@@ -2,5 +2,6 @@
   "patcher_url": "http://127.0.0.1:5500/patcher/PatchingWrapper.exe",
   "patcher_path": "base/patcher/PatchingWrapper.exe",
   "content_endpoint": "http://127.0.0.1:5500/content",
-  "content_path": "base/content"
+  "content_path": "base/content",
+  "executable": "main.exe"
 }

@@ -48,8 +48,6 @@ namespace PatchingWrapper
         //public string IndexEndPoint = "http://127.0.0.1:7000/";
         public string IndexEndPoint = "https://api.xuan25.com/PatchingServer/index";
 
-        public string Exeutable = "AviUtl\\AviUtl中文版.exe";
-
         public List<Regex> NoVerifyMatchers = new List<Regex>()
         {
             new Regex(".+\\.ini$")
@@ -73,6 +71,17 @@ namespace PatchingWrapper
                 File.Delete(UpdaterPath);
             }
 
+            // get executable from config
+            string executable = null;
+            if(File.Exists("config.json"))
+            {
+                using (FileStream configStream = new FileStream("config.json", FileMode.Open, FileAccess.Read))
+                {
+                    Json.Value config = Json.Parser.Parse(configStream);
+                    executable = config["executable"];
+                }
+            }
+
             // no startup flag
             bool noStartup = false;
             if (args.Count > 0 && args[0] == "noStartup")
@@ -85,9 +94,9 @@ namespace PatchingWrapper
             bool startupAfterDownload = false;
             if (!noStartup)
             {
-                if (File.Exists(Exeutable))
+                if (executable != null && File.Exists(executable))
                 {
-                    Process mainProcess = Process.Start(Exeutable, string.Join("", e.Args));
+                    Process mainProcess = Process.Start(Path.GetFullPath(executable), ToCmdArgs(args));
                     mainProcess.WaitForExit();
                     noStartup = true;
                 }
@@ -131,6 +140,18 @@ namespace PatchingWrapper
                 Environment.Exit(0);
                 return;
             }
+
+            // update executable from remote
+            executable = metaJson["executable"];
+            using(StreamWriter configWriter = new StreamWriter(new FileStream("config.json", FileMode.Create, FileAccess.Write)))
+            {
+                Json.Value.Object config = new Json.Value.Object()
+                {
+                    { "executable", executable }
+                };
+                configWriter.WriteLine(config.ToString());
+            }
+
 
             string contentEndpoint = metaJson["content_endpoint"];
 
@@ -298,7 +319,7 @@ namespace PatchingWrapper
             {
                 MainWindow.Closed += (object sender, EventArgs e1) =>
                 {
-                    Process.Start(Exeutable, string.Join("", e.Args));
+                    Process.Start(Path.GetFullPath(executable), ToCmdArgs(args));
                 };
             }
 
