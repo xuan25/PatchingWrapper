@@ -21,6 +21,7 @@ namespace PatcherUpdater
 
         private FileStream CheckingFileStream;
 
+        public HttpClient Client { get; private set; }
         public string Path;
         public string Url;
         public bool IsRunning;
@@ -28,8 +29,9 @@ namespace PatcherUpdater
         public long Position;
         public long Length;
 
-        public Downloader(string path, string url)
+        public Downloader(HttpClient httpClient, string path, string url)
         {
+            Client = httpClient;
             Path = path;
             Url = url;
             IsRunning = false;
@@ -111,8 +113,6 @@ namespace PatcherUpdater
 
         private void Download(string filepath, string downloadUrl)
         {
-            HttpClient httpClient = new HttpClient();
-
             OutputFileStream = new FileStream(filepath, FileMode.Append);
             Position = OutputFileStream.Position;
 
@@ -128,7 +128,7 @@ namespace PatcherUpdater
 
                 try
                 {
-                    HttpResponseMessage httpResponse = httpClient.SendAsync(httpRequest).Result;
+                    HttpResponseMessage httpResponse = Client.SendAsync(httpRequest).Result;
                     long contentLength = (long)httpResponse.Content.Headers.ContentLength;
                     if (Length < 0)
                     {
@@ -148,7 +148,7 @@ namespace PatcherUpdater
                         }
                     }
                 }
-                catch (HttpRequestException)
+                catch (Exception ex)
                 {
 
                 }

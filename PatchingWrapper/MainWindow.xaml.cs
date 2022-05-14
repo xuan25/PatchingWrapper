@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,6 +26,7 @@ namespace PatchingWrapper
         private string ContentEndpoint;
         private Queue<PendingDownload> PendingDownloads;
 
+        public HttpClient Client { get; set; }
         List<Thread> DownloadingThreads;
         Thread MonitorThread;
 
@@ -36,9 +39,12 @@ namespace PatchingWrapper
 
         private readonly double updateInterval = 0.1;
 
-        public MainWindow(string contentEndpoint, IEnumerable<PendingDownload> pendingDownloads)
+        public MainWindow(HttpClient httpClient, string contentEndpoint, IEnumerable<PendingDownload> pendingDownloads)
         {
             InitializeComponent();
+
+            Client = httpClient;
+            ServicePointManager.DefaultConnectionLimit = 5;
 
             ContentEndpoint = contentEndpoint;
             PendingDownloads = new Queue<PendingDownload>(pendingDownloads);
@@ -125,7 +131,7 @@ namespace PatchingWrapper
                     }
 
                     string url = $"{ContentEndpoint}/{pendingDownload.Path}";
-                    downloader = new Downloader(pendingDownload.Path, url);
+                    downloader = new Downloader(Client, pendingDownload.Path, url);
                     downloader.ProgressUpdated += Downloader_ProgressUpdated;
                     downloader.Download();
                     long numRemainingItems = Interlocked.Decrement(ref NumRemainingItems);

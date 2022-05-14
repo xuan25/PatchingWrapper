@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -67,7 +68,8 @@ namespace PatcherUpdater
 
         private void DownloadRunnable()
         {
-            downloader = new Downloader(Path, Url);
+            HttpClient httpClient = new HttpClient();
+            downloader = new Downloader(httpClient, Path, Url);
             downloader.ProgressUpdated += Downloader_ProgressUpdated;
             downloader.Download();
 

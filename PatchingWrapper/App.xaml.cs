@@ -76,10 +76,10 @@ namespace PatchingWrapper
             }
 
             // request meta from remote
+            HttpClient httpClient = new HttpClient();
             Json.Value metaJson;
             try
             {
-                HttpClient httpClient = new HttpClient();
                 HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Get, IndexEndPoint);
                 HttpResponseMessage httpResponse = httpClient.SendAsync(httpRequest).Result;
 
@@ -259,7 +259,7 @@ namespace PatchingWrapper
             Console.WriteLine($"Update: {pendingDownloads.Count}");
 
             // do update
-            MainWindow = new MainWindow(contentEndpoint, pendingDownloads);
+            MainWindow = new MainWindow(httpClient, contentEndpoint, pendingDownloads);
 
             // start main exec after download
             if (startupAfterDownload)
