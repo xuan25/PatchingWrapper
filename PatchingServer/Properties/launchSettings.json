@@ -2,7 +2,7 @@
   "profiles": {
     "PatchingServer": {
       "commandName": "Project",
-      "commandLineArgs": "-d base/content/ -c config.json -p 7000 -l log.txt"
+      "commandLineArgs": "-c config.json -p 7000 -l log.txt"
     }
   }
 }

@@ -10,13 +10,6 @@ namespace PatchingServer
         {
             // Create a root command with some options
 
-            Option<DirectoryInfo> dirOption = new Option<DirectoryInfo>(
-                new string[] { "-d", "--dir" },
-                "Path to the content directory")
-            {
-                IsRequired = true
-            };
-
             Option<FileInfo> configOption = new Option<FileInfo>(
                 new string[] { "-c", "--config" },
                 "Path to the config file")
@@ -40,7 +33,6 @@ namespace PatchingServer
 
             var rootCommand = new RootCommand
             {
-                dirOption,
                 configOption,
                 portOption,
                 logOption,
@@ -48,12 +40,12 @@ namespace PatchingServer
 
             rootCommand.Description = "Patching Server";
 
-            rootCommand.SetHandler((DirectoryInfo dir, FileInfo configFile, int port, FileInfo logFile) =>
+            rootCommand.SetHandler((FileInfo configFile, int port, FileInfo logFile) =>
             {
-                Program mainProgram = new Program(dir, configFile);
+                Program mainProgram = new Program(configFile);
                 mainProgram.Init();
                 mainProgram.RunServer(port, logFile);
-            }, dirOption, configOption, portOption, logOption);
+            }, configOption, portOption, logOption);
 
             // Parse the incoming args and invoke the handler
             return rootCommand.Invoke(args);
@@ -87,11 +79,9 @@ namespace PatchingServer
 
         private ManualResetEvent loadingCompleteEvent = new ManualResetEvent(false);
 
-        public Program(DirectoryInfo dir, FileInfo configFile)
+        public Program(FileInfo configFile)
         {
             IsInited = false;
-            Dir = dir;
-
             ConfigFile = configFile;
         }
 
@@ -106,10 +96,14 @@ namespace PatchingServer
             using (FileStream configStream = ConfigFile.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 Json.Value config = Json.Parser.Parse(configStream);
+
+                contentEndpoint = config["content_endpoint"];
+                Dir = new DirectoryInfo(config["content_path"]);
+
                 PatcherUrl = config["patcher_url"];
                 if(config.Contains("patcher_path"))
                     patcherPath = config["patcher_path"];
-                contentEndpoint = config["content_endpoint"];
+                
             }
 
             // patcher
