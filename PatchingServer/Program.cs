@@ -66,12 +66,16 @@ namespace PatchingServer
         public bool IsInited { get; private set; }
 
         public Json.Value.Object? ResponseRootObject { get; private set; }
+        public Json.Value.Object? PatcherObject { get; private set; }
         public Json.Value.Object? FileDictObject { get; private set; }
         public string? ResponseContent { get; private set; }
 
         public string? LogFilePath { get; private set; }
 
+        public string PatcherUrl { get; private set; }
 
+
+        private FileSystemWatcher? patcherWatcher;
         private FileSystemWatcher? fileWatcher;
         private FileSystemWatcher? dirWatcher;
         private Queue<Action> updateQueue = new Queue<Action>();
@@ -79,6 +83,7 @@ namespace PatchingServer
         private Thread? refreshThread;
         private object refreshLock = new object();
         readonly object logObj = new object();
+        private HttpClient httpClient = new HttpClient();
 
         private ManualResetEvent loadingCompleteEvent = new ManualResetEvent(false);
 
@@ -95,27 +100,38 @@ namespace PatchingServer
             loadingCompleteEvent.Reset();
             IsInited = false;
 
-            string patcherUrl;
+            string? patcherPath = null;
             string contentEndpoint;
 
             using (FileStream configStream = ConfigFile.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 Json.Value config = Json.Parser.Parse(configStream);
-                patcherUrl = config["patcher_url"];
+                PatcherUrl = config["patcher_url"];
+                if(config.Contains("patcher_path"))
+                    patcherPath = config["patcher_path"];
                 contentEndpoint = config["content_endpoint"];
             }
 
             // patcher
-            HttpClient httpClient = new HttpClient();
-            HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Get, patcherUrl);
+            HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Get, PatcherUrl);
             HttpResponseMessage httpResponse = httpClient.Send(httpRequest);
-            string patcherHash;
-            using (Stream responseStream = httpResponse.Content.ReadAsStream())
+            string? patcherHash = null;
+            if (httpResponse.StatusCode == System.Net.HttpStatusCode.OK)
             {
-                HashAlgorithm hashAlgorithm = MD5.Create();
-                byte[] hashByte = hashAlgorithm.ComputeHash(responseStream);
-                patcherHash = BitConverter.ToString(hashByte).Replace("-", "");
+                using (Stream responseStream = httpResponse.Content.ReadAsStream())
+                {
+                    HashAlgorithm hashAlgorithm = MD5.Create();
+                    byte[] hashByte = hashAlgorithm.ComputeHash(responseStream);
+                    patcherHash = BitConverter.ToString(hashByte).Replace("-", "");
+                }
             }
+
+            PatcherObject = new Json.Value.Object()
+            {
+                { "url", PatcherUrl },
+                { "hash", patcherHash },
+                { "alg", "md5" },
+            };
 
             while (true)
             {
@@ -124,6 +140,21 @@ namespace PatchingServer
                     // content watcher
 
                     refreshRunning = 0;
+
+                    if (patcherPath != null)
+                    {
+                        FileInfo patchFile = new FileInfo(patcherPath);
+                        patcherWatcher = new FileSystemWatcher(patchFile.DirectoryName, patchFile.Name);
+                        patcherWatcher.InternalBufferSize = 65536;
+                        patcherWatcher.NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size;
+                        patcherWatcher.Created += PatcherWatcher_Created;
+                        patcherWatcher.Changed += PatcherWatcher_Changed;
+                        patcherWatcher.Deleted += PatcherWatcher_Deleted;
+                        patcherWatcher.Renamed += PatcherWatcher_Renamed;
+                        patcherWatcher.Error += PatcherWatcher_Error;
+                        patcherWatcher.EnableRaisingEvents = true;
+                    }
+                    
 
                     fileWatcher = new FileSystemWatcher(Dir.FullName);
                     fileWatcher.InternalBufferSize = 65536;
@@ -174,14 +205,7 @@ namespace PatchingServer
 
                     ResponseRootObject = new Json.Value.Object()
                     {
-                        { "patcher",
-                            new Json.Value.Object()
-                            {
-                                { "url", patcherUrl },
-                                { "hash", patcherHash },
-                                { "alg", "md5" },
-                            }
-                        },
+                        { "patcher", PatcherObject },
                         { "content_endpoint", contentEndpoint },
                         { "files", FileDictObject }
                     };
@@ -233,6 +257,66 @@ namespace PatchingServer
             Init();
         }
 
+        private string RefreshPatcher()
+        {
+            HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Get, PatcherUrl);
+            HttpResponseMessage httpResponse = httpClient.Send(httpRequest);
+            
+            if (httpResponse.StatusCode != System.Net.HttpStatusCode.OK)
+            {
+                PatcherObject["hash"] = null;
+                ResponseContent = ResponseRootObject.ToString();
+                return null;
+            }
+
+            string patcherHash;
+            using (Stream responseStream = httpResponse.Content.ReadAsStream())
+            {
+                HashAlgorithm hashAlgorithm = MD5.Create();
+                byte[] hashByte = hashAlgorithm.ComputeHash(responseStream);
+                patcherHash = BitConverter.ToString(hashByte).Replace("-", "");
+            }
+
+            PatcherObject["hash"] = patcherHash;
+            ResponseContent = ResponseRootObject.ToString();
+
+            return patcherHash;
+        }
+
+        private void PatcherWatcher_Created(object sender, FileSystemEventArgs e)
+        {
+            string patcherHash = RefreshPatcher();
+
+            AppendLog($"Patcher Created: {patcherHash}");
+        }
+
+        private void PatcherWatcher_Changed(object sender, FileSystemEventArgs e)
+        {
+            string patcherHash = RefreshPatcher();
+
+            AppendLog($"Patcher Changed: {patcherHash}");
+        }
+
+        private void PatcherWatcher_Deleted(object sender, FileSystemEventArgs e)
+        {
+            string patcherHash = RefreshPatcher();
+
+            AppendLog($"Patcher Deleted: {patcherHash}");
+        }
+
+        private void PatcherWatcher_Renamed(object sender, FileSystemEventArgs e)
+        {
+            string patcherHash = RefreshPatcher();
+
+            AppendLog($"Patcher Renamed: {patcherHash}");
+        }
+
+        private void PatcherWatcher_Error(object sender, ErrorEventArgs e)
+        {
+            string patcherHash = RefreshPatcher();
+
+            AppendLog($"Patcher Error: {patcherHash}");
+        }
 
 
         private void FileWatcher_Created(object sender, FileSystemEventArgs e)

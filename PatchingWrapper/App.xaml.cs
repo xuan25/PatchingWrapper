@@ -116,6 +116,16 @@ namespace PatchingWrapper
             string patcherHashAlg = metaJson["patcher"]["alg"];
             string currPatcherHash = FileHashMD5(Process.GetCurrentProcess().MainModule.FileName);
 
+            if(patcherHash == null)
+            {
+                if (startupAfterDownload)
+                {
+                    MessageBox.Show($"Unable to fetch patcher info from the remote", "Patcher Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                Environment.Exit(0);
+                return;
+            }
+
             // update patcher
             if (patcherHashAlg != "md5" || patcherHash != currPatcherHash)
             {
