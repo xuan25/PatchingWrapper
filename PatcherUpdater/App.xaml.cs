@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -13,6 +14,26 @@ namespace PatcherUpdater
     /// </summary>
     public partial class App : Application
     {
+        public App()
+        {
+            this.DispatcherUnhandledException += (object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e) =>
+            {
+                Exception ex = e.Exception;
+                MessageBox.Show("An unexpected problem has occourred. \r\nSome operation has been terminated.\r\n\r\n" + string.Format("Captured an unhandled exception：\r\n{0}\r\n\r\nException Message：\r\n{1}\r\n\r\nException StackTrace：\r\n{2}", ex.GetType(), ex.Message, ex.StackTrace), "Some operation has been terminated.", MessageBoxButton.OK, MessageBoxImage.Warning);
+                e.Handled = true;
+            };
+
+            AppDomain.CurrentDomain.UnhandledException += (object sender, UnhandledExceptionEventArgs e) =>
+            {
+                Exception ex = (Exception)e.ExceptionObject;
+                MessageBox.Show("An unexpected and unrecoverable problem has occourred. \r\nThe software will now crash.\r\n\r\n" + string.Format("Captured an unhandled exception：\r\n{0}\r\n\r\nException Message：\r\n{1}\r\n\r\nException StackTrace：\r\n{2}", ex.GetType(), ex.Message, ex.StackTrace), "The software will now crash.", MessageBoxButton.OK, MessageBoxImage.Error);
+                if (!Debugger.IsAttached)
+                {
+                    Environment.Exit(1);
+                }
+            };
+        }
+
         private string ToCmdArgs(IEnumerable<object> args)
         {
             List<string> result = new List<string>();

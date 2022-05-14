@@ -24,7 +24,29 @@ namespace PatchingWrapper
     /// </summary>
     public partial class App : Application
     {
-        public string IndexEndPoint = "http://127.0.0.1:7000/";
+
+        public App()
+        {
+            this.DispatcherUnhandledException += (object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e) =>
+            {
+                Exception ex = e.Exception;
+                MessageBox.Show("An unexpected problem has occourred. \r\nSome operation has been terminated.\r\n\r\n" + string.Format("Captured an unhandled exception: \r\n{0}\r\n\r\nException Message: \r\n{1}\r\n\r\nException StackTrace: \r\n{2}", ex.GetType(), ex.Message, ex.StackTrace), "Some operation has been terminated.", MessageBoxButton.OK, MessageBoxImage.Warning);
+                e.Handled = true;
+            };
+
+            AppDomain.CurrentDomain.UnhandledException += (object sender, UnhandledExceptionEventArgs e) =>
+            {
+                Exception ex = (Exception)e.ExceptionObject;
+                MessageBox.Show("An unexpected and unrecoverable problem has occourred. \r\nThe software will now crash.\r\n\r\n" + string.Format("Captured an unhandled exception: \r\n{0}\r\n\r\nException Message: \r\n{1}\r\n\r\nException StackTrace: \r\n{2}", ex.GetType(), ex.Message, ex.StackTrace), "The software will now crash.", MessageBoxButton.OK, MessageBoxImage.Error);
+                if (!Debugger.IsAttached)
+                {
+                    Environment.Exit(1);
+                }
+            };
+        }
+
+        //public string IndexEndPoint = "http://127.0.0.1:7000/";
+        public string IndexEndPoint = "https://api.xuan25.com/PatchingServer/index";
 
         public string Exeutable = "AviUtl\\AviUtl中文版.exe";
 
