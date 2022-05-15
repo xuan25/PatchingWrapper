@@ -98,6 +98,6 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>if not exist "$(SolutionDir)PatchingWrapper\Resources" mkdir "$(SolutionDir)PatchingWrapper\Resources"
-copy /Y "$(SolutionDir)PatcherUpdater\$(OutDir)PatcherUpdater.exe" "$(SolutionDir)PatchingWrapper\Resources"</PostBuildEvent>
+copy /Y "$(SolutionDir)PatcherUpdater\$(OutDir)$(TargetFileName)" "$(SolutionDir)PatchingWrapper\Resources"</PostBuildEvent>
   </PropertyGroup>
 </Project>

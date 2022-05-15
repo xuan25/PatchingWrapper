@@ -107,6 +107,6 @@
   </PropertyGroup>
   <PropertyGroup>
     <PostBuildEvent>if not exist "$(SolutionDir)PatchingServer\base\patcher" mkdir "$(SolutionDir)PatchingServer\base\patcher"
-copy /Y "$(SolutionDir)PatchingWrapper\$(OutDir)PatchingWrapper.exe" "$(SolutionDir)PatchingServer\base\patcher"</PostBuildEvent>
+copy /Y "$(SolutionDir)PatchingWrapper\$(OutDir)$(TargetFileName)" "$(SolutionDir)PatchingServer\base\patcher"</PostBuildEvent>
   </PropertyGroup>
 </Project>
