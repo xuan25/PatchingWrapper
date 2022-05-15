@@ -39,12 +39,14 @@ namespace PatchingWrapper
 
         private readonly double updateInterval = 0.1;
 
+        private readonly int downloadThreads = 10;
+
         public MainWindow(HttpClient httpClient, string contentEndpoint, IEnumerable<PendingDownload> pendingDownloads)
         {
             InitializeComponent();
 
             Client = httpClient;
-            ServicePointManager.DefaultConnectionLimit = 5;
+            ServicePointManager.DefaultConnectionLimit = downloadThreads;
 
             ContentEndpoint = contentEndpoint;
             PendingDownloads = new Queue<PendingDownload>(pendingDownloads);
@@ -71,7 +73,7 @@ namespace PatchingWrapper
             }
 
             DownloadingThreads = new List<Thread>();
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < downloadThreads; i++)
             {
                 Thread t = new Thread(DownloadRunnable) { IsBackground = true };
                 DownloadingThreads.Add(t);
