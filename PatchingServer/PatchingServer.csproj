@@ -12,12 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="base\content\placeholder">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="base\patcher\PatchingWrapper.exe">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="config.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
