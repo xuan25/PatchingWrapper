@@ -3,5 +3,8 @@
   "patcher_path": "base/patcher/PatchingWrapper.exe",
   "content_endpoint": "http://127.0.0.1:5500/content",
   "content_path": "base/content",
+  "verify_exclusion": [
+    ".+\\.ini$"
+  ],
   "executable": "main.exe"
 }

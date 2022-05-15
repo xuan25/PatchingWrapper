@@ -46,11 +46,6 @@ namespace PatchingWrapper
             };
         }
 
-        public List<Regex> NoVerifyMatchers = new List<Regex>()
-        {
-            new Regex(".+\\.ini$")
-        };
-
         public static string UpdaterPath { get; private set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PatcherUpdater.exe");
 
         private void Application_Startup(object sender, StartupEventArgs e)
@@ -220,6 +215,13 @@ namespace PatchingWrapper
                 Environment.Exit(0);
             }
 
+            // build verify exclusion
+            List<Regex> verifyExclusion = new List<Regex>();
+            foreach (Json.Value ve in metaJson["verify_exclusion"])
+            {
+                verifyExclusion.Add(new Regex(".+\\.ini$"));
+            }
+
             // build update index
             List<PendingDownload> pendingDownloads = new List<PendingDownload>();
 
@@ -243,7 +245,7 @@ namespace PatchingWrapper
                 }
 
                 bool noVerify = false;
-                foreach (Regex regex in NoVerifyMatchers)
+                foreach (Regex regex in verifyExclusion)
                 {
                     if (regex.IsMatch(path))
                     {

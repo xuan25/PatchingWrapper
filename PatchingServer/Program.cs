@@ -92,6 +92,7 @@ namespace PatchingServer
 
             string? patcherPath = null;
             string contentEndpoint;
+            Json.Value verifyExclusion;
             string executable;
 
             using (FileStream configStream = ConfigFile.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
@@ -104,6 +105,8 @@ namespace PatchingServer
                 PatcherUrl = config["patcher_url"];
                 if(config.Contains("patcher_path"))
                     patcherPath = config["patcher_path"];
+
+                verifyExclusion = config["verify_exclusion"];
 
                 executable = config["executable"];
             }
@@ -204,6 +207,7 @@ namespace PatchingServer
                         { "patcher", PatcherObject },
                         { "content_endpoint", contentEndpoint },
                         { "files", FileDictObject },
+                        { "verify_exclusion", verifyExclusion },
                         { "executable", executable }
                     };
 
