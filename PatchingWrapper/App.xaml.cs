@@ -14,6 +14,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Navigation;
 
 namespace PatchingWrapper
 {
@@ -25,7 +26,7 @@ namespace PatchingWrapper
     public partial class App : Application
     {
 
-        public App()
+        public App() : base()
         {
             this.DispatcherUnhandledException += (object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e) =>
             {
@@ -45,9 +46,6 @@ namespace PatchingWrapper
             };
         }
 
-        //public string IndexEndPoint = "http://127.0.0.1:7000/";
-        public string IndexEndPoint = "https://api.xuan25.com/PatchingServer/index";
-
         public List<Regex> NoVerifyMatchers = new List<Regex>()
         {
             new Regex(".+\\.ini$")
@@ -55,9 +53,9 @@ namespace PatchingWrapper
 
         public static string UpdaterPath { get; private set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PatcherUpdater.exe");
 
-        protected override void OnStartup(StartupEventArgs e)
+        private void Application_Startup(object sender, StartupEventArgs e)
         {
-            base.OnStartup(e);
+            string indexEndpoint = (string)Application.Current.Resources["IndexEndpoint"];
 
             List<string> args = new List<string>(e.Args);
 
@@ -111,7 +109,7 @@ namespace PatchingWrapper
             Json.Value metaJson;
             try
             {
-                HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Get, IndexEndPoint);
+                HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Get, indexEndpoint);
                 HttpResponseMessage httpResponse = httpClient.SendAsync(httpRequest).Result;
 
                 using (Stream responseStream = httpResponse.Content.ReadAsStreamAsync().Result)
@@ -317,7 +315,7 @@ namespace PatchingWrapper
             // start main exec after download
             if (startupAfterDownload)
             {
-                MainWindow.Closed += (object sender, EventArgs e1) =>
+                MainWindow.Closed += (object sender1, EventArgs e1) =>
                 {
                     Process.Start(Path.GetFullPath(executable), ToCmdArgs(args));
                 };
@@ -380,6 +378,5 @@ namespace PatchingWrapper
             }
             return inUse;
         }
-
     }
 }
