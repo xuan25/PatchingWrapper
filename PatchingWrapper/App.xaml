@@ -4,6 +4,6 @@
              xmlns:local="clr-namespace:PatchingWrapper" xmlns:system="clr-namespace:System;assembly=mscorlib"
              Startup="Application_Startup">
     <Application.Resources>
-        <system:String x:Key="IndexEndpoint">http://127.0.0.1:7000/</system:String>
+        <system:String x:Key="IndexEndpoint">https://api.xuan25.com/aviutl/index</system:String>
     </Application.Resources>
 </Application>
