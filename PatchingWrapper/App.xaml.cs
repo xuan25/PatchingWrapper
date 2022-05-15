@@ -1,4 +1,4 @@
-﻿using JsonUtil;
+using JsonUtil;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -310,14 +310,18 @@ namespace PatchingWrapper
             Console.WriteLine($"Update: {pendingDownloads.Count}");
 
             // do update
-            MainWindow = new MainWindow(httpClient, contentEndpoint, pendingDownloads);
+            MainWindow mainWindow = new MainWindow(httpClient, contentEndpoint, pendingDownloads);
+            MainWindow = mainWindow;
 
             // start main exec after download
             if (startupAfterDownload)
             {
-                MainWindow.Closed += (object sender1, EventArgs e1) =>
+                mainWindow.Closed += (object sender1, EventArgs e1) =>
                 {
-                    Process.Start(Path.GetFullPath(executable), ToCmdArgs(args));
+                    if (!mainWindow.Canceled)
+                    {
+                        Process.Start(Path.GetFullPath(executable), ToCmdArgs(args));
+                    }
                 };
             }
 

@@ -23,6 +23,8 @@ namespace PatchingWrapper
     /// </summary>
     public partial class MainWindow : Window
     {
+        public bool Canceled { get; private set; } = false;
+
         private string ContentEndpoint;
         private Queue<PendingDownload> PendingDownloads;
 
@@ -59,10 +61,9 @@ namespace PatchingWrapper
 
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            foreach (Thread t in DownloadingThreads)
-            {
-                t.Abort();
-            }
+            Canceled = true;
+            PendingDownloads.Clear();
+            speedThresholdEvent.Set();
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -116,7 +117,7 @@ namespace PatchingWrapper
             Downloader downloader = null;
             try
             {
-                while (true)
+                while (!Canceled)
                 {
                     if (PendingDownloads.Count == 0)
                     {
@@ -139,12 +140,16 @@ namespace PatchingWrapper
                     downloader.ProgressUpdated += Downloader_ProgressUpdated;
                     downloader.Download();
                     long numRemainingItems = Interlocked.Decrement(ref NumRemainingItems);
-                    if (numRemainingItems == 0)
+                    if (numRemainingItems <= 0)
                     {
-                        Dispatcher.Invoke(() =>
+                        if(numRemainingItems == 0 && !Canceled)
                         {
-                            Close();
-                        });
+                            Dispatcher.Invoke(() =>
+                            {
+                                Close();
+                            });
+                        }
+                        return;
                     }
                 }
             }
@@ -165,7 +170,7 @@ namespace PatchingWrapper
             // Debug: speed limit
             if (System.Diagnostics.Debugger.IsAttached)
             {
-                if (((DownloadedSize - LastUpdateSize) * updateInterval) > speedThreshold)
+                if (!Canceled && ((DownloadedSize - LastUpdateSize) * updateInterval) > speedThreshold)
                 {
                     speedThresholdEvent.Reset();
                     speedThresholdEvent.WaitOne();
