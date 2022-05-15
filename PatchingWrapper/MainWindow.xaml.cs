@@ -24,6 +24,7 @@ namespace PatchingWrapper
     public partial class MainWindow : Window
     {
         public bool Canceled { get; private set; } = false;
+        public bool Finished { get; private set; } = false;
 
         private string ContentEndpoint;
         private Queue<PendingDownload> PendingDownloads;
@@ -61,7 +62,7 @@ namespace PatchingWrapper
 
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            Canceled = true;
+            Canceled = !Finished;
             PendingDownloads.Clear();
             speedThresholdEvent.Set();
         }
@@ -144,6 +145,7 @@ namespace PatchingWrapper
                     {
                         if(numRemainingItems == 0 && !Canceled)
                         {
+                            Finished = true;
                             Dispatcher.Invoke(() =>
                             {
                                 Close();
