@@ -247,8 +247,13 @@ namespace PatchingServer
                 refreshThread.Join();
             }
 
+            patcherWatcher.EnableRaisingEvents = false;
             fileWatcher.EnableRaisingEvents = false;
             dirWatcher.EnableRaisingEvents = false;
+            patcherWatcher.Dispose();
+            fileWatcher.Dispose();
+            dirWatcher.Dispose();
+
             updateQueue.Clear();
 
             Init();
